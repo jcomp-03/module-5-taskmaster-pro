@@ -1,4 +1,37 @@
+// empty object
 var tasks = {};
+
+
+
+
+// check if the list item element's date is in the past or coming
+// due in the near future and style it with Bootstrap class accordingly
+var auditTask = function(taskEl) {
+  // get the date stored in the span's text and trim it of spaces
+  var date = $(taskEl).find("span").text().trim();
+  // console.log(date, typeof date);
+
+  // convert to moment object at 5:00pm. In other words, we're taking the
+  // value stored in our variable date, which is a string, and creating a
+  // moment from it by parsing the string we passed, as well as specifying
+  // the locale aware token "L". We use generic set method to set the hours
+  // value to 5:00pm (17 in 24-hour time) to establish end of day.
+  var time = moment(date, "L").set("hour", 17);
+
+  // remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date. In other words, we're
+  // using a query method .isAfter() to check if the current moment is past
+  // the date stored in the variable time. If true, color the background red.
+  // Also check if the difference between the current moment and the date is
+  // absolutely less than 2. If true, color the background yellow.
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  } else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
 
 
 var createTask = function(taskText, taskDate, taskList) {
@@ -13,6 +46,9 @@ var createTask = function(taskText, taskDate, taskList) {
 
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
+
+  // check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -41,66 +77,82 @@ var loadTasks = function() {
   });
 };
 
+// load tasks for the first time. In other words, when this .js
+// file is read, run the code in the function loadTask()
+loadTasks();
+
 var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
 
 ///// Event listeners /////
-// task description was clicked
+// task description was clicked. In other words, when the
+// event "click" is heard on the <p> element located inside the
+// <ul> element with class .list-group, run the event handler 
+// function below
 $(".list-group").on("click", "p", function() {
   var text = $(this).text();
-  console.log(text);
-  var textInput = $("<textarea>")
-  .addClass("form-control")
-  .val(text);
+
+  // create new <textarea> element, add class and pass text value
+  var textInput = $("<textarea>").addClass("form-control").val(text);
+
+  // replace the <p> with the <textarea> element
   $(this).replaceWith(textInput);
+
+  // automatically highlight, or focus, the text area
   textInput.trigger("focus");
 });
 
-// user clicked out of <textarea> element
+
+// user clicked out of <textarea> element. In other words, the
+// moment the user interacts with anything outside the text area,
+// run the event handler function below
 $(".list-group").on("blur", "textarea", function() {
-  // get the textarea's current value/text
-  var text = $(this)
-    .val()
-    .trim();
+  // get the text area's current value/text
+  var text = $(this).val().trim();
 
-  // get the parent ul's id attribute
-  var status = $(this)
-    .closest(".list-group")
-    .attr("id")
-    .replace("list-", "");
+  // get the parent ul's id attribute, minus the "list-" portion
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
 
-  // get the task's position in the list of other li elements
-  var index = $(this)
-    .closest(".list-group-item")
-    .index();
+  // get the task's position in the list of other li elements. In other
+  // words, find the closest element with class .list-group-item (so it will
+  // will be the <li> element itself). Grab the <li>'s index.
+  var index = $(this).closest(".list-group-item").index();
 
+  // In the object tasks, take the value of the variable text
+  // and pass it as the value of the text property of the object
+  // located at position index in the array status.  
   tasks[status][index].text = text;
+  
   saveTasks();
 
-  // recreate p element
-  var taskP = $("<p>")
-  .addClass("m-1")
-  .text(text);
+  // recreate <p> element
+  var taskP = $("<p>").addClass("m-1").text(text);
 
-  // replace textarea with p element
+  // replace <textarea> with <p> element
   $(this).replaceWith(taskP);
-
 });
 
-// due date was clicked
-$(".list-group").on("click", "span", function() {
-  // get current text
-  var date = $(this)
-    .text()
-    .trim();
 
-  // create new input element
-  var dateInput = $("<input>")
-    .attr("type", "text")
-    .addClass("form-control")
-    .val(date);
+// due date was clicked. In other words, when the event "click"
+// is heard on the <span> element located inside the <ul> element
+// with class .list-group, run the event handler below
+$(".list-group").on("click", "span", function() {
+  // get current text from the <span> element and trim its value
+  var date = $(this).text().trim();
+
+  // create new input element, assign its type, add a class, and pass variable date as its value
+  var dateInput = $("<input>").attr("type", "text").addClass("form-control").val(date);
+  
+  // enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // when calendar is closed, force a "change" event on the `dateInput`
+      $(this).trigger("change");
+    }
+  });
 
   // swap out elements
   $(this).replaceWith(dateInput);
@@ -109,56 +161,73 @@ $(".list-group").on("click", "span", function() {
   dateInput.trigger("focus");
 });
 
-// value of due date was changed and user clicked out of <input> element
-$(".list-group").on("blur", "input[type='text']", function() {
-  // get current text
-  var date = $(this)
-    .val()
-    .trim();
 
-  // get the parent ul's id attribute
-  var status = $(this)
-    .closest(".list-group")
-    .attr("id")
-    .replace("list-", "");
+// value of due date was changed. The event type was initially "blur" but
+// once the jQuery UI widget datepicker was implemented, the blur event
+// had to change into a "change" event
+$(".list-group").on("change", "input[type='text']", function() {
+  // get current text from the input with type = text
+  var date = $(this).val().trim();
 
-  // get the task's position in the list of other li elements
-  var index = $(this)
-    .closest(".list-group-item")
-    .index();
+  // get the parent ul's id attribute, minus the "list-" portion
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
 
-  // update task in array and re-save to localstorage
+  // get the task's position in the list of other li elements. In other
+  // words, find the closest element with class .list-group-item (so it will
+  // will be the <li> element itself). Grab the <li>'s index.
+  var index = $(this).closest(".list-group-item").index();
+
+  // In the object tasks, take the value of the variable text
+  // and pass it as the value of the text property of the object
+  // located at position index in the array status.
   tasks[status][index].date = date;
+  
+  // re-save to local storage once the edit date event has happened
+  // and the tasks object has been updated
   saveTasks();
 
   // recreate span element with bootstrap classes
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(date);
+  var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(date);
 
-  // replace input with span element
+  // replace <input> with <span> element
   $(this).replaceWith(taskSpan);
+
+  // Pass task's <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
-// modal was triggered
+
+// modal was triggered. In other words, when the user clicks the green
+// Add Task button and the modal appears, clear out the values for the text area
+// and the input field 
 $("#task-form-modal").on("show.bs.modal", function() {
+  console.log('Your event listener fired!');
   // clear values
   $("#modalTaskDescription, #modalDueDate").val("");
 });
 
-// modal is fully visible
+
+// modal is fully visible. In other words, when the modal has appeared,
+// immediately focus on the text area with id modalTaskDescription
 $("#task-form-modal").on("shown.bs.modal", function() {
-  // highlight textarea
   $("#modalTaskDescription").trigger("focus");
 });
 
-// save button in modal was clicked
+
+// save button in modal was clicked. In other words, when the user
+// clicks on the Save Task button in the modal, create a new task
+// and pass the text and date into the function createTask;
+// automatically assign it to the toDo list.
 $("#task-form-modal .btn-primary").click(function() {
   // get form values
   var taskText = $("#modalTaskDescription").val();
   var taskDate = $("#modalDueDate").val();
 
+  // if the user entered both a task description and date,
+  // create the task, hide the modal, and push the new object
+  // to the tasks.toDo array.
   if (taskText && taskDate) {
+
     createTask(taskText, taskDate, "toDo");
 
     // close modal
@@ -170,21 +239,26 @@ $("#task-form-modal .btn-primary").click(function() {
       date: taskDate
     });
 
+    // run saveTasks() function
     saveTasks();
   }
+
 });
+
 
 // remove all tasks
 $("#remove-tasks").on("click", function() {
+  debugger;
   for (var key in tasks) {
+    
     tasks[key].length = 0;
+
+    // empty each array: toDo, inProgress, inReview, done
     $("#list-" + key).empty();
   }
+  // save these changes to local storage. Saving nothing effectively.
   saveTasks();
 });
-
-// load tasks for the first time
-loadTasks();
 
 
 $(".card .list-group").sortable({
@@ -258,3 +332,12 @@ $("#trash").droppable({
     console.log("out");
   }
 });
+
+
+$("#modalDueDate").datepicker({
+  minDate: 1,
+  dateFormat: "mm/dd/yy",
+  showButtonPanel: true,
+  closeText: "I'm done"
+});
+
