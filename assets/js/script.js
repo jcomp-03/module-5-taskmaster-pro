@@ -5,11 +5,10 @@ var tasks = {};
 
 
 // check if the list item element's date is in the past or coming
-// due in the near future and style it with Bootstrap class accordingly
+// due in the near future and style it with Bootstrap classes accordingly
 var auditTask = function(taskEl) {
   // get the date stored in the span's text and trim it of spaces
   var date = $(taskEl).find("span").text().trim();
-  // console.log(date, typeof date);
 
   // convert to moment object at 5:00pm. In other words, we're taking the
   // value stored in our variable date, which is a string, and creating a
@@ -81,12 +80,14 @@ var loadTasks = function() {
 // file is read, run the code in the function loadTask()
 loadTasks();
 
+
 var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
 
 ///// Event listeners /////
+
 // task description was clicked. In other words, when the
 // event "click" is heard on the <p> element located inside the
 // <ul> element with class .list-group, run the event handler 
@@ -166,7 +167,7 @@ $(".list-group").on("click", "span", function() {
 // once the jQuery UI widget datepicker was implemented, the blur event
 // had to change into a "change" event
 $(".list-group").on("change", "input[type='text']", function() {
-  // get current text from the input with type = text
+  // get current text from the <input> with type = text
   var date = $(this).val().trim();
 
   // get the parent ul's id attribute, minus the "list-" portion
@@ -218,7 +219,7 @@ $("#task-form-modal").on("shown.bs.modal", function() {
 // clicks on the Save Task button in the modal, create a new task
 // and pass the text and date into the function createTask;
 // automatically assign it to the toDo list.
-$("#task-form-modal .btn-primary").click(function() {
+$("#task-form-modal .btn-save").click(function() {
   // get form values
   var taskText = $("#modalTaskDescription").val();
   var taskDate = $("#modalDueDate").val();
@@ -265,24 +266,27 @@ $(".card .list-group").sortable({
   connectWith: $(".card .list-group")
 });
 
-
+// enable draggable/sortable feature on list-group elements
 $(".card .list-group").sortable({
+  // enable dragging across lists
   connectWith: $(".card .list-group"),
   scroll: false,
   tolerance: "pointer",
   helper: "clone",
-  /* activate: function(event) {
-    console.log("activate", this);
+  activate: function(event, ui) {
+    $(this).addClass("dropover");
+    $(".bottom-trash").addClass("bottom-trash-drag");
   },
-  deactivate: function(event) {
-    console.log("deactivate", this);
+  deactivate: function(event, ui) {
+    $(this).removeClass("dropover");
+    $(".bottom-trash").removeClass("bottom-trash-drag");
   },
   over: function(event) {
-    console.log("over", event.target);
+    $(event.target).addClass("dropover-active");
   },
   out: function(event) {
-    console.log("out", event.target);
-  }, */
+    $(event.target).removeClass("dropover-active");
+  },
 
   update: function(event) {
     // array to store the task data in
@@ -317,27 +321,35 @@ $(".card .list-group").sortable({
   } 
 });
 
-
+// trash icon can be dropped onto
 $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
   drop: function(event, ui) {
-    console.log("drop");
+    // remove dragged element from the dom
     ui.draggable.remove();
+    $(".bottom-trash").removeClass("bottom-trash-active");
   },
   over: function(event, ui) {
-    console.log("over");
+    $(".bottom-trash").addClass("bottom-trash-active");
   },
   out: function(event, ui) {
-    console.log("out");
+    $(".bottom-trash").removeClass("bottom-trash-active");
   }
 });
 
-
+// convert text field into a jquery date picker
 $("#modalDueDate").datepicker({
+  // force user to select a future date
   minDate: 1,
   dateFormat: "mm/dd/yy",
   showButtonPanel: true,
   closeText: "I'm done"
 });
 
+
+setInterval(function () {
+  $(".card .list-group-item").each(function(index, el) {
+    auditTask(el);
+  });
+}, 1800000);
